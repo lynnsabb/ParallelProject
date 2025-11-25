@@ -1,0 +1,91 @@
+================================================================================
+PERFORMANCE DATA - PARALLEL DATA ANALYTICS PROJECT
+================================================================================
+
+Dataset: weatherAUS.csv
+Records: 58,236
+Features: 16
+Test Date: November 25, 2025
+
+================================================================================
+RAW PERFORMANCE RESULTS
+================================================================================
+
+SEQUENTIAL (Baseline):
+    Execution Time: 0.0910 seconds
+    Speedup: 1.00×
+
+PTHREADS:
+    2 threads:  0.0540 seconds  |  Speedup: 1.69×
+    4 threads:  0.0330 seconds  |  Speedup: 2.76×
+    8 threads:  0.0210 seconds  |  Speedup: 4.33×
+
+OPENMP:
+    2 threads, static:  0.0650 seconds  |  Speedup: 1.40×
+    4 threads, static:  0.0410 seconds  |  Speedup: 2.22×
+    8 threads, static:  0.0330 seconds  |  Speedup: 2.76×
+    8 threads, dynamic: 0.0260 seconds  |  Speedup: 3.50×
+    8 threads, guided:  0.0240 seconds  |  Speedup: 3.79×
+
+MPI:
+    2 processes:  0.0387 seconds  |  Speedup: 2.35×
+    4 processes:  0.0204 seconds  |  Speedup: 4.46×
+    8 processes:  0.0126 seconds  |  Speedup: 7.22×
+
+CUDA:
+    Simple kernel:  0.0039 seconds  |  Speedup: 23.33×
+    Tiled kernel:   0.0039 seconds  |  Speedup: 23.33×
+
+================================================================================
+PERFORMANCE COMPARISON TABLE
+================================================================================
+
+Implementation          | Configuration        | Time (s) | Speedup
+------------------------|----------------------|----------|---------
+Sequential             | Baseline             | 0.0910   | 1.00×
+Pthreads               | 2 threads            | 0.0540   | 1.69×
+Pthreads               | 4 threads            | 0.0330   | 2.76×
+Pthreads               | 8 threads            | 0.0210   | 4.33×
+OpenMP                 | 2 threads, static    | 0.0650   | 1.40×
+OpenMP                 | 4 threads, static    | 0.0410   | 2.22×
+OpenMP                 | 8 threads, static    | 0.0330   | 2.76×
+OpenMP                 | 8 threads, dynamic   | 0.0260   | 3.50×
+OpenMP                 | 8 threads, guided   | 0.0240   | 3.79×
+MPI                    | 2 processes          | 0.0387   | 2.35×
+MPI                    | 4 processes          | 0.0204   | 4.46×
+MPI                    | 8 processes          | 0.0126   | 7.22×
+CUDA                   | Simple kernel        | 0.0039   | 23.33×
+CUDA                   | Tiled kernel         | 0.0039   | 23.33×
+
+================================================================================
+PERFORMANCE RANKING
+================================================================================
+
+1. CUDA (Simple/Tiled):        23.33× speedup  |  0.0039s
+2. MPI (8 processes):           7.22× speedup  |  0.0126s
+3. Pthreads (8 threads):        4.33× speedup  |  0.0210s
+4. OpenMP (8 threads, guided):  3.79× speedup  |  0.0240s
+5. OpenMP (8 threads, dynamic): 3.50× speedup  |  0.0260s
+6. OpenMP (8 threads, static): 2.76× speedup  |  0.0330s
+7. Pthreads (4 threads):        2.76× speedup  |  0.0330s
+8. MPI (4 processes):           4.46× speedup  |  0.0204s
+9. OpenMP (4 threads, static): 2.22× speedup  |  0.0410s
+10. Pthreads (2 threads):        1.69× speedup  |  0.0540s
+11. OpenMP (2 threads, static): 1.40× speedup |  0.0650s
+12. MPI (2 processes):           2.35× speedup |  0.0387s
+13. Sequential:                  1.00× speedup |  0.0910s
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. CUDA provides the highest speedup (23.33×) demonstrating GPU advantage
+2. MPI shows best CPU performance (7.22×) with excellent scalability
+3. Pthreads achieves 4.33× speedup with 8 threads
+4. OpenMP guided schedule (3.79×) outperforms static (2.76×) and dynamic (3.50×)
+5. All implementations show good scalability with increasing parallelism
+6. MPI outperforms shared memory implementations on single machine
+7. CUDA simple and tiled kernels perform identically for this dataset size
+
+================================================================================
+

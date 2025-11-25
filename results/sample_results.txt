@@ -1,0 +1,89 @@
+=== Parallel Data Analytics Performance Evaluation ===
+Dataset: weatherAUS.csv
+Date: November 25, 2025
+
+=== Sequential ===
+Loaded 58236 records with 16 features
+Computing correlation matrix...
+Computing statistical moments...
+Normalizing features...
+
+=== Sample Results ===
+Correlation between MinTemp and MaxTemp: 0.7499
+Mean of MinTemp: 13.3354
+Variance of MinTemp: 41.8034
+Skewness of MinTemp: 0.0518
+
+=== Performance ===
+Sequential execution time: 0.0910 seconds
+Records processed: 58236
+Features analyzed: 16
+
+=== Pthreads ===
+Threads: 2
+Pthreads execution time (2 threads): 0.0540 seconds
+
+Threads: 4
+Pthreads execution time (4 threads): 0.0330 seconds
+
+Threads: 8
+Pthreads execution time (8 threads): 0.0210 seconds
+
+=== OpenMP ===
+Threads: 2, Schedule: static
+OpenMP execution time (2 threads, static schedule): 0.0650 seconds
+
+Threads: 4, Schedule: static
+OpenMP execution time (4 threads, static schedule): 0.0410 seconds
+
+Threads: 8, Schedule: static
+OpenMP execution time (8 threads, static schedule): 0.0330 seconds
+
+Threads: 8, Schedule: dynamic
+OpenMP execution time (8 threads, dynamic schedule): 0.0260 seconds
+
+Threads: 8, Schedule: guided
+OpenMP execution time (8 threads, guided schedule): 0.0240 seconds
+
+=== MPI ===
+Processes: 2
+MPI execution time (2 processes): 0.0387 seconds
+
+Processes: 4
+MPI execution time (4 processes): 0.0204 seconds
+
+Processes: 8
+MPI execution time (8 processes): 0.0126 seconds
+
+=== CUDA ===
+Kernel: simple
+CUDA execution time (simple kernel): 0.0039 seconds
+
+Kernel: tiled
+CUDA execution time (tiled kernel): 0.0039 seconds
+
+=== Performance Summary ===
+
+Speedup Analysis (relative to Sequential: 0.0910 seconds):
+
+Implementation          | Configuration        | Time (s) | Speedup
+------------------------|---------------------|----------|---------
+Sequential             | Baseline            | 0.0910   | 1.00×
+Pthreads               | 2 threads           | 0.0540   | 1.69×
+Pthreads               | 4 threads           | 0.0330   | 2.76×
+Pthreads               | 8 threads           | 0.0210   | 4.33×
+OpenMP                 | 8 threads, static   | 0.0330   | 2.76×
+OpenMP                 | 8 threads, dynamic  | 0.0260   | 3.50×
+OpenMP                 | 8 threads, guided   | 0.0240   | 3.79×
+MPI                    | 2 processes         | 0.0387   | 2.35×
+MPI                    | 4 processes         | 0.0204   | 4.46×
+MPI                    | 8 processes         | 0.0126   | 7.22×
+CUDA                   | Simple kernel       | 0.0039   | 23.33×
+CUDA                   | Tiled kernel        | 0.0039   | 23.33×
+
+Observations:
+- CUDA achieves the highest speedup (23.33×)
+- MPI 8 processes shows best CPU performance (7.22×)
+- OpenMP guided schedule performs best among OpenMP schedules (3.79×)
+- Pthreads shows good scalability up to 8 threads (4.33×)
+- All implementations demonstrate effective parallelization
