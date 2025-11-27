@@ -1,14 +1,4 @@
-/**
- * Pthreads Implementation: Statistical Feature Extraction
- * 
- * Parallelizes correlation matrix computation and statistical moment calculations
- * using POSIX threads with configurable thread counts.
- * 
- * Parallelization Strategy:
- * - Divide correlation matrix computation across threads (row-wise or block-wise)
- * - Parallelize statistical moment computation across features
- * - Use mutex for thread-safe operations if needed
- */
+// Pthreads Implementation: Statistical Feature Extraction with parallel correlation and moments
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,7 +12,6 @@
 #define BUFFER_SIZE 1024
 #define MAX_THREADS 32
 
-// Dataset structure
 typedef struct {
     double *data[MAX_FEATURES];
     int num_features;
@@ -30,7 +19,6 @@ typedef struct {
     char feature_names[MAX_FEATURES][32];
 } Dataset;
 
-// Thread arguments structure
 typedef struct {
     int thread_id;
     int num_threads;
@@ -43,12 +31,8 @@ typedef struct {
     double *skewness;
 } ThreadArgs;
 
-// Global synchronization
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/**
- * Parse CSV and extract numerical features (same as sequential)
- */
 int load_dataset(const char *filename, Dataset *ds) {
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -57,7 +41,6 @@ int load_dataset(const char *filename, Dataset *ds) {
     }
 
     char buffer[BUFFER_SIZE];
-    
     if (!fgets(buffer, BUFFER_SIZE, file)) {
         fclose(file);
         return 0;
@@ -79,10 +62,8 @@ int load_dataset(const char *filename, Dataset *ds) {
 
     while (fgets(buffer, BUFFER_SIZE, file) && ds->num_records < MAX_RECORDS) {
         char *token = strtok(buffer, ",");
-        int col = 0;
-        int valid = 1;
+        int col = 0, valid = 1, feat_idx = 0;
         double values[MAX_FEATURES];
-        int feat_idx = 0;
 
         while (token != NULL && col < 23) {
             for (int i = 0; i < MAX_FEATURES; i++) {
@@ -112,20 +93,12 @@ int load_dataset(const char *filename, Dataset *ds) {
     return 1;
 }
 
-/**
- * Compute mean of a feature vector
- */
 double compute_mean(double *data, int n) {
     double sum = 0.0;
-    for (int i = 0; i < n; i++) {
-        sum += data[i];
-    }
+    for (int i = 0; i < n; i++) sum += data[i];
     return sum / n;
 }
 
-/**
- * Compute standard deviation
- */
 double compute_stddev(double *data, int n, double mean) {
     double sum_sq_diff = 0.0;
     for (int i = 0; i < n; i++) {
@@ -135,9 +108,6 @@ double compute_stddev(double *data, int n, double mean) {
     return sqrt(sum_sq_diff / n);
 }
 
-/**
- * Compute Pearson correlation coefficient
- */
 double compute_correlation(double *x, double *y, int n) {
     double mean_x = compute_mean(x, n);
     double mean_y = compute_mean(y, n);
@@ -156,14 +126,9 @@ double compute_correlation(double *x, double *y, int n) {
     return sum_product / (n * std_x * std_y);
 }
 
-/**
- * Thread function: Compute correlation matrix for assigned rows
- */
 void *compute_correlation_thread(void *arg) {
     ThreadArgs *args = (ThreadArgs *)arg;
     Dataset *ds = args->dataset;
-    
-    // Each thread computes a block of correlation matrix rows
     int features_per_thread = ds->num_features / args->num_threads;
     int start_row = args->thread_id * features_per_thread;
     int end_row = (args->thread_id == args->num_threads - 1) ? 
@@ -175,17 +140,12 @@ void *compute_correlation_thread(void *arg) {
                 ds->data[i], ds->data[j], ds->num_records);
         }
     }
-
     pthread_exit(NULL);
 }
 
-/**
- * Thread function: Compute statistical moments for assigned features
- */
 void *compute_moments_thread(void *arg) {
     ThreadArgs *args = (ThreadArgs *)arg;
     Dataset *ds = args->dataset;
-    
     int features_per_thread = ds->num_features / args->num_threads;
     int start_feat = args->thread_id * features_per_thread;
     int end_feat = (args->thread_id == args->num_threads - 1) ? 
@@ -195,8 +155,6 @@ void *compute_moments_thread(void *arg) {
         args->means[f] = compute_mean(ds->data[f], ds->num_records);
         double std = compute_stddev(ds->data[f], ds->num_records, args->means[f]);
         args->variances[f] = std * std;
-
-        // Compute skewness
         double sum_cubed = 0.0;
         for (int i = 0; i < ds->num_records; i++) {
             double normalized = (ds->data[f][i] - args->means[f]) / (std + 1e-10);
@@ -204,13 +162,9 @@ void *compute_moments_thread(void *arg) {
         }
         args->skewness[f] = sum_cubed / ds->num_records;
     }
-
     pthread_exit(NULL);
 }
 
-/**
- * Parallel correlation matrix computation
- */
 void parallel_correlation_matrix(Dataset *ds, double **corr_matrix, int num_threads) {
     pthread_t threads[MAX_THREADS];
     ThreadArgs args[MAX_THREADS];
@@ -222,15 +176,9 @@ void parallel_correlation_matrix(Dataset *ds, double **corr_matrix, int num_thre
         args[t].corr_matrix = corr_matrix;
         pthread_create(&threads[t], NULL, compute_correlation_thread, &args[t]);
     }
-
-    for (int t = 0; t < num_threads; t++) {
-        pthread_join(threads[t], NULL);
-    }
+    for (int t = 0; t < num_threads; t++) pthread_join(threads[t], NULL);
 }
 
-/**
- * Parallel statistical moments computation
- */
 void parallel_statistical_moments(Dataset *ds, double *means, double *variances, 
                                    double *skewness, int num_threads) {
     pthread_t threads[MAX_THREADS];
@@ -245,23 +193,15 @@ void parallel_statistical_moments(Dataset *ds, double *means, double *variances,
         args[t].skewness = skewness;
         pthread_create(&threads[t], NULL, compute_moments_thread, &args[t]);
     }
-
-    for (int t = 0; t < num_threads; t++) {
-        pthread_join(threads[t], NULL);
-    }
+    for (int t = 0; t < num_threads; t++) pthread_join(threads[t], NULL);
 }
 
-/**
- * Main computation function
- */
 void perform_analysis(Dataset *ds, int num_threads) {
-    // Allocate correlation matrix
     double **corr_matrix = (double **)malloc(ds->num_features * sizeof(double *));
     for (int i = 0; i < ds->num_features; i++) {
         corr_matrix[i] = (double *)malloc(ds->num_features * sizeof(double));
     }
 
-    // Allocate statistical arrays
     double *means = (double *)malloc(ds->num_features * sizeof(double));
     double *variances = (double *)malloc(ds->num_features * sizeof(double));
     double *skewness = (double *)malloc(ds->num_features * sizeof(double));
@@ -272,7 +212,6 @@ void perform_analysis(Dataset *ds, int num_threads) {
     printf("Computing statistical moments with %d threads...\n", num_threads);
     parallel_statistical_moments(ds, means, variances, skewness, num_threads);
 
-    // Print sample results
     printf("\n=== Sample Results ===\n");
     printf("Correlation between %s and %s: %.4f\n", 
            ds->feature_names[0], ds->feature_names[1], corr_matrix[0][1]);
@@ -280,10 +219,7 @@ void perform_analysis(Dataset *ds, int num_threads) {
     printf("Variance of %s: %.4f\n", ds->feature_names[0], variances[0]);
     printf("Skewness of %s: %.4f\n", ds->feature_names[0], skewness[0]);
 
-    // Cleanup
-    for (int i = 0; i < ds->num_features; i++) {
-        free(corr_matrix[i]);
-    }
+    for (int i = 0; i < ds->num_features; i++) free(corr_matrix[i]);
     free(corr_matrix);
     free(means);
     free(variances);
@@ -317,11 +253,7 @@ int main(int argc, char *argv[]) {
     printf("Records processed: %d\n", ds.num_records);
     printf("Features analyzed: %d\n", ds.num_features);
 
-    // Cleanup
-    for (int i = 0; i < ds.num_features; i++) {
-        free(ds.data[i]);
-    }
-
+    for (int i = 0; i < ds.num_features; i++) free(ds.data[i]);
     pthread_mutex_destroy(&mutex);
     return 0;
 }

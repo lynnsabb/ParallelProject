@@ -15,26 +15,20 @@ echo Adding CUDA to PATH...
 set PATH=%PATH%;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.0\bin
 
 echo.
-echo Attempting CUDA compilation...
+echo Compiling CUDA implementation (cuda.cu)...
 echo.
 
-REM Try minimal version first
-echo [1/4] Trying minimal version (no optimizations)...
-nvcc -o cuda.exe cuda_minimal.cu
-if %ERRORLEVEL% EQU 0 goto success
-
-echo.
-echo [2/4] Trying minimal version with O2...
-nvcc -O2 -o cuda.exe cuda_minimal.cu
-if %ERRORLEVEL% EQU 0 goto success
-
-echo.
-echo [3/4] Trying main version with O0 (no optimizations)...
+echo [1/3] Trying with O0 (no optimizations)...
 nvcc -O0 -o cuda.exe cuda.cu
 if %ERRORLEVEL% EQU 0 goto success
 
 echo.
-echo [4/4] Trying main version with O2...
+echo [2/3] Trying with O2 optimizations...
+nvcc -O2 -o cuda.exe cuda.cu
+if %ERRORLEVEL% EQU 0 goto success
+
+echo.
+echo [3/3] Trying with O2 and specific architecture...
 nvcc -O2 -arch=sm_75 -o cuda.exe cuda.cu
 if %ERRORLEVEL% EQU 0 goto success
 

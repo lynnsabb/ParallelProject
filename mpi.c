@@ -1,15 +1,4 @@
-/**
- * MPI Implementation: Statistical Feature Extraction
- * 
- * Parallelizes correlation matrix computation and statistical moment calculations
- * using MPI distributed-memory parallelism with configurable process counts.
- * 
- * Parallelization Strategy:
- * - Distribute correlation matrix rows across MPI processes
- * - Each process computes its assigned rows independently
- * - Gather results using MPI_Gather or MPI_Allgather
- * - Parallelize statistical moment computation across processes
- */
+// MPI Implementation: Statistical Feature Extraction with distributed-memory parallelism
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +10,6 @@
 #define MAX_RECORDS 150000
 #define BUFFER_SIZE 1024
 
-// Dataset structure
 typedef struct {
     double *data[MAX_FEATURES];
     int num_features;
@@ -29,9 +17,6 @@ typedef struct {
     char feature_names[MAX_FEATURES][32];
 } Dataset;
 
-/**
- * Parse CSV and extract numerical features
- */
 int load_dataset(const char *filename, Dataset *ds) {
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -40,7 +25,6 @@ int load_dataset(const char *filename, Dataset *ds) {
     }
 
     char buffer[BUFFER_SIZE];
-    
     if (!fgets(buffer, BUFFER_SIZE, file)) {
         fclose(file);
         return 0;
@@ -62,10 +46,8 @@ int load_dataset(const char *filename, Dataset *ds) {
 
     while (fgets(buffer, BUFFER_SIZE, file) && ds->num_records < MAX_RECORDS) {
         char *token = strtok(buffer, ",");
-        int col = 0;
-        int valid = 1;
+        int col = 0, valid = 1, feat_idx = 0;
         double values[MAX_FEATURES];
-        int feat_idx = 0;
 
         while (token != NULL && col < 23) {
             for (int i = 0; i < MAX_FEATURES; i++) {
@@ -94,20 +76,12 @@ int load_dataset(const char *filename, Dataset *ds) {
     return 1;
 }
 
-/**
- * Compute mean of a feature vector
- */
 double compute_mean(double *data, int n) {
     double sum = 0.0;
-    for (int i = 0; i < n; i++) {
-        sum += data[i];
-    }
+    for (int i = 0; i < n; i++) sum += data[i];
     return sum / n;
 }
 
-/**
- * Compute standard deviation
- */
 double compute_stddev(double *data, int n, double mean) {
     double sum_sq_diff = 0.0;
     for (int i = 0; i < n; i++) {
@@ -117,9 +91,6 @@ double compute_stddev(double *data, int n, double mean) {
     return sqrt(sum_sq_diff / n);
 }
 
-/**
- * Compute Pearson correlation coefficient
- */
 double compute_correlation(double *x, double *y, int n) {
     double mean_x = compute_mean(x, n);
     double mean_y = compute_mean(y, n);
@@ -138,9 +109,6 @@ double compute_correlation(double *x, double *y, int n) {
     return sum_product / (n * std_x * std_y);
 }
 
-/**
- * Parallel correlation matrix computation using MPI
- */
 void parallel_correlation_matrix(Dataset *ds, double **corr_matrix, 
                                  int rank, int size) {
     int num_features = ds->num_features;
@@ -148,7 +116,6 @@ void parallel_correlation_matrix(Dataset *ds, double **corr_matrix,
     int start_row = rank * rows_per_process;
     int end_row = (rank == size - 1) ? num_features : (rank + 1) * rows_per_process;
 
-    // Each process computes its assigned rows
     for (int i = start_row; i < end_row; i++) {
         for (int j = 0; j < num_features; j++) {
             corr_matrix[i][j] = compute_correlation(
@@ -156,32 +123,24 @@ void parallel_correlation_matrix(Dataset *ds, double **corr_matrix,
         }
     }
 
-    // Gather results from all processes
-    // Each process sends its computed rows to root (rank 0)
     if (rank == 0) {
-        // Root receives data from other processes
         MPI_Status status;
         for (int p = 1; p < size; p++) {
             int p_start = p * rows_per_process;
             int p_end = (p == size - 1) ? num_features : (p + 1) * rows_per_process;
             int p_rows = p_end - p_start;
-            
             for (int i = 0; i < p_rows; i++) {
                 MPI_Recv(corr_matrix[p_start + i], num_features, MPI_DOUBLE, 
                         p, 0, MPI_COMM_WORLD, &status);
             }
         }
     } else {
-        // Other processes send their computed rows to root
         for (int i = start_row; i < end_row; i++) {
             MPI_Send(corr_matrix[i], num_features, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
         }
     }
 }
 
-/**
- * Parallel statistical moments computation using MPI
- */
 void parallel_statistical_moments(Dataset *ds, double *means, double *variances, 
                                   double *skewness, int rank, int size) {
     int num_features = ds->num_features;
@@ -189,13 +148,10 @@ void parallel_statistical_moments(Dataset *ds, double *means, double *variances,
     int start_feat = rank * features_per_process;
     int end_feat = (rank == size - 1) ? num_features : (rank + 1) * features_per_process;
 
-    // Each process computes moments for its assigned features
     for (int f = start_feat; f < end_feat; f++) {
         means[f] = compute_mean(ds->data[f], ds->num_records);
         double std = compute_stddev(ds->data[f], ds->num_records, means[f]);
         variances[f] = std * std;
-
-        // Compute skewness
         double sum_cubed = 0.0;
         for (int i = 0; i < ds->num_records; i++) {
             double normalized = (ds->data[f][i] - means[f]) / (std + 1e-10);
@@ -204,60 +160,44 @@ void parallel_statistical_moments(Dataset *ds, double *means, double *variances,
         skewness[f] = sum_cubed / ds->num_records;
     }
 
-    // Gather results: each process sends its computed features to root
-    // Root receives all features, other processes send their portion
     if (rank == 0) {
-        // Root already has its portion, receive from others
         MPI_Status status;
         for (int p = 1; p < size; p++) {
             int p_start = p * features_per_process;
             int p_end = (p == size - 1) ? num_features : (p + 1) * features_per_process;
             int p_count = p_end - p_start;
-            
             MPI_Recv(means + p_start, p_count, MPI_DOUBLE, p, 0, MPI_COMM_WORLD, &status);
             MPI_Recv(variances + p_start, p_count, MPI_DOUBLE, p, 1, MPI_COMM_WORLD, &status);
             MPI_Recv(skewness + p_start, p_count, MPI_DOUBLE, p, 2, MPI_COMM_WORLD, &status);
         }
     } else {
-        // Other processes send their computed features to root
         int count = end_feat - start_feat;
         MPI_Send(means + start_feat, count, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
         MPI_Send(variances + start_feat, count, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
         MPI_Send(skewness + start_feat, count, MPI_DOUBLE, 0, 2, MPI_COMM_WORLD);
     }
     
-    // Broadcast complete results to all processes
     MPI_Bcast(means, num_features, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(variances, num_features, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(skewness, num_features, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 }
 
-/**
- * Main computation function
- */
 void perform_analysis(Dataset *ds, int rank, int size) {
-    // Allocate correlation matrix
     double **corr_matrix = (double **)malloc(ds->num_features * sizeof(double *));
     for (int i = 0; i < ds->num_features; i++) {
         corr_matrix[i] = (double *)malloc(ds->num_features * sizeof(double));
     }
 
-    // Allocate statistical arrays
     double *means = (double *)malloc(ds->num_features * sizeof(double));
     double *variances = (double *)malloc(ds->num_features * sizeof(double));
     double *skewness = (double *)malloc(ds->num_features * sizeof(double));
 
-    if (rank == 0) {
-        printf("Computing correlation matrix with %d processes...\n", size);
-    }
+    if (rank == 0) printf("Computing correlation matrix with %d processes...\n", size);
     parallel_correlation_matrix(ds, corr_matrix, rank, size);
 
-    if (rank == 0) {
-        printf("Computing statistical moments with %d processes...\n", size);
-    }
+    if (rank == 0) printf("Computing statistical moments with %d processes...\n", size);
     parallel_statistical_moments(ds, means, variances, skewness, rank, size);
 
-    // Print results only from rank 0
     if (rank == 0) {
         printf("\n=== Sample Results ===\n");
         printf("Correlation between %s and %s: %.4f\n", 
@@ -267,10 +207,7 @@ void perform_analysis(Dataset *ds, int rank, int size) {
         printf("Skewness of %s: %.4f\n", ds->feature_names[0], skewness[0]);
     }
 
-    // Cleanup
-    for (int i = 0; i < ds->num_features; i++) {
-        free(corr_matrix[i]);
-    }
+    for (int i = 0; i < ds->num_features; i++) free(corr_matrix[i]);
     free(corr_matrix);
     free(means);
     free(variances);
@@ -304,9 +241,7 @@ int main(int argc, char *argv[]) {
 
     MPI_Barrier(MPI_COMM_WORLD);
     start_time = MPI_Wtime();
-    
     perform_analysis(&ds, rank, size);
-    
     MPI_Barrier(MPI_COMM_WORLD);
     end_time = MPI_Wtime();
 
@@ -318,11 +253,7 @@ int main(int argc, char *argv[]) {
         printf("Features analyzed: %d\n", ds.num_features);
     }
 
-    // Cleanup
-    for (int i = 0; i < ds.num_features; i++) {
-        free(ds.data[i]);
-    }
-
+    for (int i = 0; i < ds.num_features; i++) free(ds.data[i]);
     MPI_Finalize();
     return 0;
 }
