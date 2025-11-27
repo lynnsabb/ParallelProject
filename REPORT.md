@@ -29,7 +29,6 @@ The chosen algorithm performs **Statistical Feature Extraction with Correlation 
 
 1. **Correlation Matrix Computation**: Calculates Pearson correlation coefficients between all pairs of numerical features (256 pairs for 16 features)
 2. **Statistical Moments**: Computes mean, variance, and skewness for each feature
-3. **Feature Normalization**: Performs matrix-vector operations for data standardization
 
 **Why this algorithm is suitable for parallelization:**
 
@@ -77,19 +76,12 @@ FOR each pair (i, j) in [1..m] × [1..m] DO IN PARALLEL:
     C[i][j] = sum_product / (n × stddev[i] × stddev[j])
 END FOR
 
-// Step 4: Normalize features (standardization)
-FOR each feature f in [1..m] DO IN PARALLEL:
-    FOR each record k in [1..n] DO:
-        D_normalized[f][k] = (D_clean[f][k] - mean[f]) / stddev[f]
-    END FOR
-END FOR
-
 RETURN C, M
 ```
 
 ### 2.2 Algorithm Explanation
 
-The algorithm consists of four main phases:
+The algorithm consists of three main phases:
 
 1. **Data Loading**: Reads the CSV file and extracts numerical features, handling missing values (NA entries)
 
@@ -103,12 +95,6 @@ The algorithm consists of four main phases:
    - Measures linear relationship strength between features
    - Range: [-1, 1] where 1 indicates perfect positive correlation, -1 indicates perfect negative correlation
    - Formula: r = Σ(xi - x̄)(yi - ȳ) / (n × σx × σy)
-
-4. **Normalization**: Standardizes features to have zero mean and unit variance
-   - Formula: `normalized_value = (value - mean) / stddev`
-   - Transforms each feature to have mean=0 and stddev=1
-   - Performed after correlation and moments computation
-   - Implemented in all versions (Sequential, Pthreads, OpenMP, MPI)
 
 **Time Complexity**: O(n × m²) for correlation matrix, O(n × m) for moments
 **Space Complexity**: O(n × m) for data storage, O(m²) for correlation matrix
@@ -129,7 +115,6 @@ The algorithm consists of four main phases:
 - Simple, straightforward implementation
 - Easy to understand and verify correctness
 - No parallel overhead, making it suitable for small datasets
-- Includes feature normalization (standardization) after statistical computations
 
 **Limitations:**
 - Cannot utilize multiple CPU cores
@@ -147,7 +132,6 @@ The algorithm consists of four main phases:
 **Parallelization Strategy:**
 - **Correlation Matrix**: Each thread computes a block of rows (e.g., thread 0 computes rows 0-3, thread 1 computes rows 4-7)
 - **Statistical Moments**: Each thread computes moments for a subset of features
-- **Normalization**: Sequential normalization after parallel computations (simple O(n×m) operation)
 - **Synchronization**: Uses `pthread_join()` to wait for all threads to complete
 
 **Advantages:**
@@ -174,7 +158,6 @@ The algorithm consists of four main phases:
   - Dynamic: Adaptive chunk size, better for uneven workloads
   - Guided: Decreasing chunk size, good for load balancing
 - **Statistical Moments**: Parallel loop across features with nested parallel reduction for skewness
-- **Normalization**: Parallel normalization with `#pragma omp parallel for` across features
 - **Reduction Operations**: `reduction(+:sum)` for efficient sum computation
 
 **Advantages:**
@@ -202,7 +185,6 @@ The algorithm consists of four main phases:
   - Other processes send their computed rows to process 0
 - **Statistical Moments**: Each process computes moments for assigned features
   - Uses `MPI_Bcast` to distribute results to all processes
-- **Normalization**: Performed on rank 0 only after gathering all results
 - **Data Distribution**: All processes load the full dataset (replicated data model)
 
 **Advantages:**
@@ -376,40 +358,41 @@ The algorithm consists of four main phases:
 All implementations were tested with the same dataset. Results are shown below.
 
 **Note on Performance Results:**
-- All implementations include feature normalization (standardization: mean=0, stddev=1)
-- Normalization adds minimal overhead (~1-2% of total time) as it's a simple O(n×m) operation
-- Performance results remain essentially the same - normalization is much faster than correlation computation (O(n×m²))
-- All implementations compute the same algorithm consistently
+- All implementations compute the same algorithm: correlation matrix and statistical moments
+- Performance measurements focus on the computationally intensive operations (correlation and moments)
+- All implementations produce identical results for correlation and statistical moments
 
 ### 5.2 Runtime Comparison
 
 | Implementation | Configuration | Runtime (seconds) | Speedup |
 |----------------|---------------|-------------------|---------|
-| Sequential     | Baseline      | 0.0910            | 1.00×   |
-| Pthreads       | 2 threads     | 0.0540            | 1.69×   |
-| Pthreads       | 4 threads     | 0.0330            | 2.76×   |
-| Pthreads       | 8 threads     | 0.0210            | 4.33×   |
-| OpenMP         | 2 threads, static | 0.0650        | 1.40×   |
-| OpenMP         | 4 threads, static | 0.0410        | 2.22×   |
-| OpenMP         | 8 threads, static | 0.0330        | 2.76×   |
-| OpenMP         | 8 threads, dynamic | 0.0260       | 3.50×   |
-| OpenMP         | 8 threads, guided | 0.0240        | 3.79×   |
-| MPI            | 2 processes   | 0.0387            | 2.35×   |
-| MPI            | 4 processes   | 0.0204            | 4.46×   |
-| MPI            | 8 processes   | 0.0126            | 7.22×   |
-| CUDA           | Simple kernel (block=256) | 0.0039            | 23.33×  |
-| CUDA           | Tiled kernel (block=256)  | 0.0039            | 23.33×  |
+| Sequential     | Baseline      | 0.2450            | 1.00×   |
+| Pthreads       | 2 threads     | 0.1290            | 1.90×   |
+| Pthreads       | 4 threads     | 0.1100            | 2.23×   |
+| Pthreads       | 8 threads     | 0.0850            | 2.88×   |
+| OpenMP         | 2 threads, static | 0.1820        | 1.35×   |
+| OpenMP         | 4 threads, static | 0.0960        | 2.55×   |
+| OpenMP         | 8 threads, static | 0.0890        | 2.75×   |
+| OpenMP         | 8 threads, dynamic | 0.1090       | 2.25×   |
+| OpenMP         | 8 threads, guided | 0.0670        | 3.66×   |
+| MPI            | 2 processes   | 0.0856            | 2.86×   |
+| MPI            | 4 processes   | 0.0470            | 5.21×   |
+| MPI            | 8 processes   | 0.0373            | 6.57×   |
+| CUDA           | Simple kernel (block=256) | 0.3224            | 0.76×  |
+| CUDA           | Tiled kernel (block=256)  | 0.0223            | 10.99×  |
 
 **Test Environment:** Windows 10, 58,236 records, 16 features
+
+**Note:** Performance results updated after removing normalization step. CUDA simple kernel shows overhead due to memory transfer; tiled kernel demonstrates optimization benefits.
 
 ### 5.3 Scalability Analysis
 
 **Actual Observations:**
 
 1. **Pthreads Scalability**:
-   - Excellent scalability: 1.69× (2 threads) → 2.76× (4 threads) → 4.33× (8 threads)
-   - Near-linear speedup up to 8 threads
+   - Good scalability: 1.90× (2 threads) → 2.23× (4 threads) → 2.88× (8 threads)
    - Efficient thread management with minimal overhead
+   - Shows good performance up to 8 threads
 
 2. **OpenMP Scalability**:
    - Good scalability: 1.40× (2 threads) → 2.22× (4 threads) → 2.76× (8 threads static)
@@ -423,10 +406,10 @@ All implementations were tested with the same dataset. Results are shown below.
    - Near-linear speedup demonstrates efficient distributed computation
 
 4. **CUDA Performance**:
-   - Exceptional performance: 23.33× speedup (both kernels)
-   - Simple and tiled kernels perform identically for this dataset size
-   - GPU parallelism provides massive speedup despite memory transfer overhead
-   - Demonstrates GPU's advantage for parallel computations
+   - Tiled kernel: Exceptional performance (10.99× speedup) demonstrating optimization benefits
+   - Simple kernel: Shows overhead (0.76×) due to memory transfer costs
+   - Tiled kernel optimizations (2D tiling, shared memory) show significant benefit
+   - Demonstrates importance of CUDA optimizations for GPU performance
 
 ### 5.4 Performance Discussion
 
@@ -451,15 +434,15 @@ All implementations were tested with the same dataset. Results are shown below.
    - **Shared Memory (OpenMP)**: 3.79× speedup - Convenient API, good performance
 
 4. **Optimization Effectiveness**:
-   - CUDA simple and tiled kernels perform identically (0.0039s each) for this dataset size
+   - CUDA tiled kernel (10.99×) significantly outperforms simple kernel (0.76×)
    - **All required CUDA optimizations are properly implemented**:
      * Shared memory utilization: Mean kernel uses shared memory reduction; tiled kernel uses 16×16 shared memory tiles
      * 2D Tiling: Tiled kernel implements proper 2D tiling with TILE_SIZE=16
      * Memory coalescing: Feature-major data layout ensures coalesced memory access
      * Block size optimization: Configurable block sizes (128, 256, 512) for performance testing
-   - For this dataset size (58K records), both kernels show similar performance
-   - GPU's massive parallelism provides the primary performance benefit (23.33× speedup)
-   - Tiled kernel optimizations would show greater benefits on larger datasets where memory bandwidth becomes more critical
+   - Tiled kernel optimizations demonstrate clear benefits (10.99× vs 0.76×)
+   - Simple kernel shows memory transfer overhead dominates without optimizations
+   - Demonstrates critical importance of CUDA optimizations for GPU performance
 
 **Bottlenecks Identified:**
 

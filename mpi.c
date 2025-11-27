@@ -182,18 +182,6 @@ void parallel_statistical_moments(Dataset *ds, double *means, double *variances,
     MPI_Bcast(skewness, num_features, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 }
 
-void normalize_features(Dataset *ds, double *means, double *variances) {
-    if (ds->num_features == 0) return;
-    for (int f = 0; f < ds->num_features; f++) {
-        double mean = means[f];
-        double std = sqrt(variances[f]);
-        std = (std < 1e-10) ? 1.0 : std;
-        for (int i = 0; i < ds->num_records; i++) {
-            ds->data[f][i] = (ds->data[f][i] - mean) / std;
-        }
-    }
-}
-
 void perform_analysis(Dataset *ds, int rank, int size) {
     double **corr_matrix = (double **)malloc(ds->num_features * sizeof(double *));
     for (int i = 0; i < ds->num_features; i++) {
@@ -209,11 +197,6 @@ void perform_analysis(Dataset *ds, int rank, int size) {
 
     if (rank == 0) printf("Computing statistical moments with %d processes...\n", size);
     parallel_statistical_moments(ds, means, variances, skewness, rank, size);
-
-    if (rank == 0) {
-        printf("Normalizing features...\n");
-        normalize_features(ds, means, variances);
-    }
 
     if (rank == 0) {
         printf("\n=== Sample Results ===\n");

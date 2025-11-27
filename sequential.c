@@ -135,17 +135,6 @@ void compute_statistical_moments(Dataset *ds, double *means, double *variances, 
     }
 }
 
-void normalize_features(Dataset *ds, double *means, double *stddevs) {
-    printf("Normalizing features...\n");
-    for (int f = 0; f < ds->num_features; f++) {
-        double mean = means[f];
-        double std = (stddevs[f] < 1e-10) ? 1.0 : stddevs[f];
-        for (int i = 0; i < ds->num_records; i++) {
-            ds->data[f][i] = (ds->data[f][i] - mean) / std;
-        }
-    }
-}
-
 void perform_analysis(Dataset *ds) {
     double **corr_matrix = (double **)malloc(ds->num_features * sizeof(double *));
     for (int i = 0; i < ds->num_features; i++) {
@@ -155,14 +144,9 @@ void perform_analysis(Dataset *ds) {
     double *means = (double *)malloc(ds->num_features * sizeof(double));
     double *variances = (double *)malloc(ds->num_features * sizeof(double));
     double *skewness = (double *)malloc(ds->num_features * sizeof(double));
-    double *stddevs = (double *)malloc(ds->num_features * sizeof(double));
 
     compute_correlation_matrix(ds, corr_matrix);
     compute_statistical_moments(ds, means, variances, skewness);
-    for (int i = 0; i < ds->num_features; i++) {
-        stddevs[i] = sqrt(variances[i]);
-    }
-    normalize_features(ds, means, stddevs);
 
     printf("\n=== Sample Results ===\n");
     printf("Correlation between %s and %s: %.4f\n", 
@@ -176,7 +160,6 @@ void perform_analysis(Dataset *ds) {
     free(means);
     free(variances);
     free(skewness);
-    free(stddevs);
 }
 
 int main(int argc, char *argv[]) {

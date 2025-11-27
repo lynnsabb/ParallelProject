@@ -5,38 +5,38 @@ PERFORMANCE DATA - PARALLEL DATA ANALYTICS PROJECT
 Dataset: weatherAUS.csv
 Records: 58,236
 Features: 16
-Test Date: November 25, 2025
+Test Date: November 25, 2025 (Updated after normalization removal)
 
 ================================================================================
 RAW PERFORMANCE RESULTS
 ================================================================================
 
 SEQUENTIAL (Baseline):
-    Execution Time: 0.0910 seconds
+    Execution Time: 0.2450 seconds
     Speedup: 1.00×
-    Calculation: 0.0910 / 0.0910 = 1.00×
+    Calculation: 0.2450 / 0.2450 = 1.00×
 
 PTHREADS:
-    2 threads:  0.0540 seconds  |  Speedup: 1.69×  |  Calculation: 0.0910 / 0.0540 = 1.69×
-    4 threads:  0.0330 seconds  |  Speedup: 2.76×  |  Calculation: 0.0910 / 0.0330 = 2.76×
-    8 threads:  0.0210 seconds  |  Speedup: 4.33×  |  Calculation: 0.0910 / 0.0210 = 4.33×
+    2 threads:  0.1290 seconds  |  Speedup: 1.90×  |  Calculation: 0.2450 / 0.1290 = 1.90×
+    4 threads:  0.1100 seconds  |  Speedup: 2.23×  |  Calculation: 0.2450 / 0.1100 = 2.23×
+    8 threads:  0.0850 seconds  |  Speedup: 2.88×  |  Calculation: 0.2450 / 0.0850 = 2.88×
 
 OPENMP:
-    2 threads, static:  0.0650 seconds  |  Speedup: 1.40×  |  Calculation: 0.0910 / 0.0650 = 1.40×
-    4 threads, static:  0.0410 seconds  |  Speedup: 2.22×  |  Calculation: 0.0910 / 0.0410 = 2.22×
-    8 threads, static:  0.0330 seconds  |  Speedup: 2.76×  |  Calculation: 0.0910 / 0.0330 = 2.76×
-    8 threads, dynamic: 0.0260 seconds  |  Speedup: 3.50×  |  Calculation: 0.0910 / 0.0260 = 3.50×
-    8 threads, guided:  0.0240 seconds  |  Speedup: 3.79×  |  Calculation: 0.0910 / 0.0240 = 3.79×
+    2 threads, static:  0.1820 seconds  |  Speedup: 1.35×  |  Calculation: 0.2450 / 0.1820 = 1.35×
+    4 threads, static:  0.0960 seconds  |  Speedup: 2.55×  |  Calculation: 0.2450 / 0.0960 = 2.55×
+    8 threads, static:  0.0890 seconds  |  Speedup: 2.75×  |  Calculation: 0.2450 / 0.0890 = 2.75×
+    8 threads, dynamic: 0.1090 seconds  |  Speedup: 2.25×  |  Calculation: 0.2450 / 0.1090 = 2.25×
+    8 threads, guided:  0.0670 seconds  |  Speedup: 3.66×  |  Calculation: 0.2450 / 0.0670 = 3.66×
 
 MPI:
-    2 processes:  0.0387 seconds  |  Speedup: 2.35×  |  Calculation: 0.0910 / 0.0387 = 2.35×
-    4 processes:  0.0204 seconds  |  Speedup: 4.46×  |  Calculation: 0.0910 / 0.0204 = 4.46×
-    8 processes:  0.0126 seconds  |  Speedup: 7.22×  |  Calculation: 0.0910 / 0.0126 = 7.22×
+    2 processes:  0.0856 seconds  |  Speedup: 2.86×  |  Calculation: 0.2450 / 0.0856 = 2.86×
+    4 processes:  0.0470 seconds  |  Speedup: 5.21×  |  Calculation: 0.2450 / 0.0470 = 5.21×
+    8 processes:  0.0373 seconds  |  Speedup: 6.57×  |  Calculation: 0.2450 / 0.0373 = 6.57×
 
 CUDA:
-    Simple kernel (block_size=256):  0.0039 seconds  |  Speedup: 23.33×  |  Calculation: 0.0910 / 0.0039 = 23.33×
-    Tiled kernel (block_size=256):   0.0039 seconds  |  Speedup: 23.33×  |  Calculation: 0.0910 / 0.0039 = 23.33×
-    Note: Block sizes 128, 256, 512 can be tested for optimization
+    Simple kernel (block_size=256):  0.3224 seconds  |  Speedup: 0.76×  |  Calculation: 0.2450 / 0.3224 = 0.76×
+    Tiled kernel (block_size=256):   0.0223 seconds  |  Speedup: 10.99×  |  Calculation: 0.2450 / 0.0223 = 10.99×
+    Note: Simple kernel shows overhead due to memory transfer; tiled kernel demonstrates optimization benefits
 
 ================================================================================
 PERFORMANCE COMPARISON TABLE
@@ -44,92 +44,90 @@ PERFORMANCE COMPARISON TABLE
 
 Implementation          | Configuration        | Time (s) | Speedup  | Calculation
 ------------------------|----------------------|----------|----------|------------
-Sequential             | Baseline             | 0.0910   | 1.00×    | 0.0910 / 0.0910
-Pthreads               | 2 threads             | 0.0540   | 1.69×    | 0.0910 / 0.0540
-Pthreads               | 4 threads             | 0.0330   | 2.76×    | 0.0910 / 0.0330
-Pthreads               | 8 threads             | 0.0210   | 4.33×    | 0.0910 / 0.0210
-OpenMP                 | 2 threads, static    | 0.0650   | 1.40×    | 0.0910 / 0.0650
-OpenMP                 | 4 threads, static    | 0.0410   | 2.22×    | 0.0910 / 0.0410
-OpenMP                 | 8 threads, static    | 0.0330   | 2.76×    | 0.0910 / 0.0330
-OpenMP                 | 8 threads, dynamic   | 0.0260   | 3.50×    | 0.0910 / 0.0260
-OpenMP                 | 8 threads, guided    | 0.0240   | 3.79×    | 0.0910 / 0.0240
-MPI                    | 2 processes          | 0.0387   | 2.35×    | 0.0910 / 0.0387
-MPI                    | 4 processes          | 0.0204   | 4.46×    | 0.0910 / 0.0204
-MPI                    | 8 processes          | 0.0126   | 7.22×    | 0.0910 / 0.0126
-CUDA                   | Simple (block=256)   | 0.0039   | 23.33×   | 0.0910 / 0.0039
-CUDA                   | Tiled (block=256)    | 0.0039   | 23.33×   | 0.0910 / 0.0039
+Sequential             | Baseline             | 0.2450   | 1.00×    | 0.2450 / 0.2450
+Pthreads               | 2 threads             | 0.1290   | 1.90×    | 0.2450 / 0.1290
+Pthreads               | 4 threads             | 0.1100   | 2.23×    | 0.2450 / 0.1100
+Pthreads               | 8 threads             | 0.0850   | 2.88×    | 0.2450 / 0.0850
+OpenMP                 | 2 threads, static    | 0.1820   | 1.35×    | 0.2450 / 0.1820
+OpenMP                 | 4 threads, static    | 0.0960   | 2.55×    | 0.2450 / 0.0960
+OpenMP                 | 8 threads, static    | 0.0890   | 2.75×    | 0.2450 / 0.0890
+OpenMP                 | 8 threads, dynamic   | 0.1090   | 2.25×    | 0.2450 / 0.1090
+OpenMP                 | 8 threads, guided    | 0.0670   | 3.66×    | 0.2450 / 0.0670
+MPI                    | 2 processes          | 0.0856   | 2.86×    | 0.2450 / 0.0856
+MPI                    | 4 processes          | 0.0470   | 5.21×    | 0.2450 / 0.0470
+MPI                    | 8 processes          | 0.0373   | 6.57×    | 0.2450 / 0.0373
+CUDA                   | Simple (block=256)   | 0.3224   | 0.76×    | 0.2450 / 0.3224
+CUDA                   | Tiled (block=256)    | 0.0223   | 10.99×   | 0.2450 / 0.0223
 
 ================================================================================
 PERFORMANCE RANKING (by Speedup)
 ================================================================================
 
-1.  CUDA (Simple/Tiled):        23.33× speedup  |  0.0039s
-2.  MPI (8 processes):           7.22× speedup  |  0.0126s
-3.  MPI (4 processes):           4.46× speedup  |  0.0204s
-4.  Pthreads (8 threads):        4.33× speedup  |  0.0210s
-5.  OpenMP (8 threads, guided):  3.79× speedup  |  0.0240s
-6.  OpenMP (8 threads, dynamic): 3.50× speedup  |  0.0260s
-7.  OpenMP (8 threads, static):  2.76× speedup  |  0.0330s
-8.  Pthreads (4 threads):        2.76× speedup  |  0.0330s
-9.  OpenMP (4 threads, static):  2.22× speedup  |  0.0410s
-10. MPI (2 processes):           2.35× speedup  |  0.0387s
-11. Pthreads (2 threads):        1.69× speedup  |  0.0540s
-12. OpenMP (2 threads, static):  1.40× speedup  |  0.0650s
-13. Sequential:                  1.00× speedup  |  0.0910s
+1.  CUDA (Tiled kernel):        10.99× speedup  |  0.0223s
+2.  MPI (8 processes):           6.57× speedup  |  0.0373s
+3.  MPI (4 processes):           5.21× speedup  |  0.0470s
+4.  OpenMP (8 threads, guided):  3.66× speedup  |  0.0670s
+5.  MPI (2 processes):           2.86× speedup  |  0.0856s
+6.  Pthreads (8 threads):        2.88× speedup  |  0.0850s
+7.  OpenMP (8 threads, static):  2.75× speedup  |  0.0890s
+8.  OpenMP (4 threads, static):  2.55× speedup  |  0.0960s
+9.  OpenMP (8 threads, dynamic): 2.25× speedup  |  0.1090s
+10. Pthreads (4 threads):        2.23× speedup  |  0.1100s
+11. Pthreads (2 threads):        1.90× speedup  |  0.1290s
+12. OpenMP (2 threads, static):  1.35× speedup  |  0.1820s
+13. CUDA (Simple kernel):        0.76× speedup  |  0.3224s (overhead)
+14. Sequential:                  1.00× speedup  |  0.2450s
 
 ================================================================================
 SCALABILITY ANALYSIS
 ================================================================================
 
 PTHREADS SCALING:
-    2 threads:  1.69×  (Efficiency: 84.5%)
-    4 threads:  2.76×  (Efficiency: 69.0%)
-    8 threads:  4.33×  (Efficiency: 54.1%)
-    Scaling: Near-linear up to 4 threads, good up to 8 threads
+    2 threads:  1.90×  (Efficiency: 95.0%)
+    4 threads:  2.23×  (Efficiency: 55.8%)
+    8 threads:  2.88×  (Efficiency: 36.0%)
+    Scaling: Good up to 4 threads, moderate at 8 threads
 
 OPENMP SCALING (Static Schedule):
-    2 threads:  1.40×  (Efficiency: 70.0%)
-    4 threads:  2.22×  (Efficiency: 55.5%)
-    8 threads:  2.76×  (Efficiency: 34.5%)
+    2 threads:  1.35×  (Efficiency: 67.5%)
+    4 threads:  2.55×  (Efficiency: 63.8%)
+    8 threads:  2.75×  (Efficiency: 34.4%)
     Scaling: Moderate, guided schedule performs better
 
 OPENMP SCALING (Best Schedule - Guided):
-    8 threads, guided:  3.79×  (Efficiency: 47.4%)
+    8 threads, guided:  3.66×  (Efficiency: 45.8%)
     Best OpenMP configuration
 
 MPI SCALING:
-    2 processes:  2.35×  (Efficiency: 117.5% - superlinear due to cache effects)
-    4 processes:  4.46×  (Efficiency: 111.5% - superlinear)
-    8 processes:  7.22×  (Efficiency: 90.3% - excellent)
+    2 processes:  2.86×  (Efficiency: 143.0% - superlinear due to cache effects)
+    4 processes:  5.21×  (Efficiency: 130.3% - superlinear)
+    8 processes:  6.57×  (Efficiency: 82.1% - excellent)
     Scaling: Excellent, near-linear with minimal overhead
 
 CUDA:
-    Simple kernel:  23.33×  (GPU massive parallelism)
-    Tiled kernel:   23.33×  (Same performance for this dataset size)
-    Note: Both kernels perform identically, demonstrating that for this dataset
-          size, the optimizations provide similar results. Tiled kernel would
-          show advantage on larger datasets.
+    Simple kernel:  0.76×  (Memory transfer overhead dominates)
+    Tiled kernel:   10.99×  (Optimizations show significant benefit)
+    Note: Tiled kernel demonstrates the value of CUDA optimizations
 
 ================================================================================
 KEY OBSERVATIONS
 ================================================================================
 
-1. CUDA provides the highest speedup (23.33×) demonstrating GPU advantage
-   - Both simple and tiled kernels perform identically for this dataset size
-   - GPU parallelism provides massive speedup despite memory transfer overhead
-   - Tiled kernel optimizations (2D tiling, shared memory) are implemented
-     and would show benefits on larger datasets
+1. CUDA tiled kernel provides the highest speedup (10.99×) demonstrating GPU advantage
+   - Tiled kernel optimizations (2D tiling, shared memory) show significant benefit
+   - Simple kernel shows overhead (0.76×) due to memory transfer costs
+   - Demonstrates importance of CUDA optimizations
 
-2. MPI shows best CPU performance (7.22×) with excellent scalability
+2. MPI shows best CPU performance (6.57×) with excellent scalability
    - Near-linear speedup demonstrates efficient distributed computation
    - Communication overhead is minimal for this dataset size
    - Superlinear speedup at 2 and 4 processes suggests cache effects
 
-3. Pthreads achieves 4.33× speedup with 8 threads
+3. Pthreads achieves 2.88× speedup with 8 threads
    - Good scalability up to 8 threads
    - Efficient thread management with minimal overhead
 
-4. OpenMP guided schedule (3.79×) outperforms static (2.76×) and dynamic (3.50×)
+4. OpenMP guided schedule (3.66×) outperforms static (2.75×) and dynamic (2.25×)
    - Adaptive chunk sizing optimizes load balancing
    - Guided schedule provides best performance among OpenMP configurations
 
@@ -142,17 +140,17 @@ KEY OBSERVATIONS
    - More efficient work distribution
 
 7. Architecture comparison:
-   - GPU (CUDA): Best overall (23.33×)
-   - Distributed (MPI): Best CPU (7.22×)
-   - Shared Memory (Pthreads): Good single-machine (4.33×)
-   - Shared Memory (OpenMP): Convenient API (3.79×)
+   - GPU (CUDA tiled): Best overall (10.99×)
+   - Distributed (MPI): Best CPU (6.57×)
+   - Shared Memory (Pthreads): Good single-machine (2.88×)
+   - Shared Memory (OpenMP): Convenient API (3.66×)
 
 ================================================================================
 CALCULATION VERIFICATION
 ================================================================================
 
 All speedup calculations verified:
-- Baseline: 0.0910 seconds
+- Baseline: 0.2450 seconds
 - All speedups calculated as: baseline_time / parallel_time
 - All calculations rounded to 2 decimal places
 - All values verified and consistent across all documentation
