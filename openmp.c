@@ -160,6 +160,19 @@ void compute_statistical_moments(Dataset *ds, double *means, double *variances, 
     }
 }
 
+void normalize_features(Dataset *ds, double *means, double *variances) {
+    printf("Normalizing features...\n");
+    #pragma omp parallel for
+    for (int f = 0; f < ds->num_features; f++) {
+        double mean = means[f];
+        double std = sqrt(variances[f]);
+        std = (std < 1e-10) ? 1.0 : std;
+        for (int i = 0; i < ds->num_records; i++) {
+            ds->data[f][i] = (ds->data[f][i] - mean) / std;
+        }
+    }
+}
+
 void perform_analysis(Dataset *ds, const char *schedule_type) {
     double **corr_matrix = (double **)malloc(ds->num_features * sizeof(double *));
     for (int i = 0; i < ds->num_features; i++) {
@@ -183,6 +196,8 @@ void perform_analysis(Dataset *ds, const char *schedule_type) {
 
     printf("Computing statistical moments...\n");
     compute_statistical_moments(ds, means, variances, skewness);
+
+    normalize_features(ds, means, variances);
 
     printf("\n=== Sample Results ===\n");
     printf("Correlation between %s and %s: %.4f\n", 

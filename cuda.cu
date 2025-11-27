@@ -8,6 +8,7 @@
 #define MAX_RECORDS 150000
 #define BUFFER_SIZE 1024
 #define BLOCK_SIZE 256
+#define TILE_SIZE 16
 
 typedef struct {
     double *data[MAX_FEATURES];
@@ -73,8 +74,23 @@ __global__ void compute_mean_kernel(double *data, double *means, int n, int num_
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= num_features) return;
     double sum = 0.0;
-    for (int i = 0; i < n; i++) sum += data[idx * n + i];
+    for (int i = 0; i < n; i++) {
+        sum += data[idx * n + i];
+    }
     means[idx] = sum / n;
+}
+
+__global__ void compute_mean_kernel_shared(double *data, double *means, int n, int num_features) {
+    __shared__ double sdata[256];
+    int tid = threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + tid;
+    double sum = 0.0;
+    if (idx < num_features) {
+        for (int i = 0; i < n; i++) sum += data[idx * n + i];
+    }
+    sdata[tid] = (idx < num_features) ? sum / n : 0.0;
+    __syncthreads();
+    if (idx < num_features) means[idx] = sdata[tid];
 }
 
 __global__ void compute_stddev_kernel(double *data, double *means, double *stddevs, int n, int num_features) {
@@ -101,26 +117,54 @@ __global__ void compute_correlation_kernel_simple(double *data, double *means, d
 
 __global__ void compute_correlation_kernel_tiled(double *data, double *means, double *stddevs,
                                                   double *corr_matrix, int n, int num_features) {
-    int row = blockIdx.y, col = blockIdx.x;
-    if (row >= num_features || col >= num_features) return;
-    double sum = 0.0, mean_x = means[row], mean_y = means[col];
-    int tid = threadIdx.x, stride = blockDim.x;
-    for (int i = tid; i < n; i += stride) sum += (data[row * n + i] - mean_x) * (data[col * n + i] - mean_y);
-    __shared__ double sdata[256];
-    sdata[tid] = sum;
-    __syncthreads();
-    for (int s = stride / 2; s > 0; s >>= 1) {
-        if (tid < s) sdata[tid] += sdata[tid + s];
+    __shared__ double tile_x[TILE_SIZE][TILE_SIZE];
+    __shared__ double tile_y[TILE_SIZE][TILE_SIZE];
+    
+    int tx = threadIdx.x, ty = threadIdx.y;
+    int row = blockIdx.y * TILE_SIZE + ty;
+    int col = blockIdx.x * TILE_SIZE + tx;
+    
+    double sum = 0.0;
+    double mean_x = (row < num_features) ? means[row] : 0.0;
+    double mean_y = (col < num_features) ? means[col] : 0.0;
+    
+    for (int tile = 0; tile < (n + TILE_SIZE - 1) / TILE_SIZE; tile++) {
+        int idx_x = tile * TILE_SIZE + tx;
+        int idx_y = tile * TILE_SIZE + ty;
+        
+        if (row < num_features && idx_x < n) {
+            tile_x[ty][tx] = data[row * n + idx_x] - mean_x;
+        } else {
+            tile_x[ty][tx] = 0.0;
+        }
+        
+        if (col < num_features && idx_y < n) {
+            tile_y[ty][tx] = data[col * n + idx_y] - mean_y;
+        } else {
+            tile_y[ty][tx] = 0.0;
+        }
+        
+        __syncthreads();
+        
+        if (row < num_features && col < num_features) {
+            for (int k = 0; k < TILE_SIZE && (tile * TILE_SIZE + k) < n; k++) {
+                sum += tile_x[ty][k] * tile_y[k][tx];
+            }
+        }
         __syncthreads();
     }
-    if (tid == 0) {
+    
+    if (row < num_features && col < num_features) {
         double std_x = stddevs[row], std_y = stddevs[col];
-        if (std_x > 1e-10 && std_y > 1e-10) corr_matrix[row * num_features + col] = sdata[0] / (n * std_x * std_y);
-        else corr_matrix[row * num_features + col] = 0.0;
+        if (std_x > 1e-10 && std_y > 1e-10) {
+            corr_matrix[row * num_features + col] = sum / (n * std_x * std_y);
+        } else {
+            corr_matrix[row * num_features + col] = 0.0;
+        }
     }
 }
 
-void perform_analysis(Dataset *ds, const char *kernel_type) {
+void perform_analysis(Dataset *ds, const char *kernel_type, int block_size) {
     int n = ds->num_records;
     int num_features = ds->num_features;
     
@@ -139,21 +183,23 @@ void perform_analysis(Dataset *ds, const char *kernel_type) {
         for (int i = 0; i < n; i++) h_data_flat[f * n + i] = ds->data[f][i];
     cudaMemcpy(d_data, h_data_flat, data_size, cudaMemcpyHostToDevice);
     
-    dim3 grid_mean((num_features + BLOCK_SIZE - 1) / BLOCK_SIZE);
-    dim3 block_mean(BLOCK_SIZE);
-    compute_mean_kernel<<<grid_mean, block_mean>>>(d_data, d_means, n, num_features);
+    dim3 grid_mean((num_features + block_size - 1) / block_size);
+    dim3 block_mean(block_size);
+    compute_mean_kernel_shared<<<grid_mean, block_mean>>>(d_data, d_means, n, num_features);
     cudaDeviceSynchronize();
     
     compute_stddev_kernel<<<grid_mean, block_mean>>>(d_data, d_means, d_stddevs, n, num_features);
     cudaDeviceSynchronize();
     
-    dim3 grid_corr(num_features, num_features);
-    dim3 block_corr(BLOCK_SIZE, 1);
-    
-    if (strcmp(kernel_type, "tiled") == 0)
+    if (strcmp(kernel_type, "tiled") == 0) {
+        dim3 grid_corr((num_features + TILE_SIZE - 1) / TILE_SIZE, (num_features + TILE_SIZE - 1) / TILE_SIZE);
+        dim3 block_corr(TILE_SIZE, TILE_SIZE);
         compute_correlation_kernel_tiled<<<grid_corr, block_corr>>>(d_data, d_means, d_stddevs, d_corr_matrix, n, num_features);
-    else
+    } else {
+        dim3 grid_corr(num_features, num_features);
+        dim3 block_corr(block_size, 1);
         compute_correlation_kernel_simple<<<grid_corr, block_corr>>>(d_data, d_means, d_stddevs, d_corr_matrix, n, num_features);
+    }
     cudaDeviceSynchronize();
     
     double *h_means = (double *)malloc(feature_size);
@@ -175,8 +221,19 @@ void perform_analysis(Dataset *ds, const char *kernel_type) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 3) { printf("Usage: %s <dataset.csv> <kernel_type>\n", argv[0]); printf("Kernel types: tiled, simple\n"); return 1; }
+    if (argc < 3) { 
+        printf("Usage: %s <dataset.csv> <kernel_type> [block_size]\n", argv[0]); 
+        printf("Kernel types: tiled, simple\n");
+        printf("Block sizes: 128, 256, 512 (default: 256)\n");
+        return 1; 
+    }
     const char *kernel_type = argv[2];
+    int block_size = (argc > 3) ? atoi(argv[3]) : 256;
+    if (block_size != 128 && block_size != 256 && block_size != 512) {
+        printf("Warning: Block size %d not standard, using 256\n", block_size);
+        block_size = 256;
+    }
+    
     int device_count;
     cudaGetDeviceCount(&device_count);
     if (device_count == 0) { printf("Error: No CUDA devices found\n"); return 1; }
@@ -185,6 +242,7 @@ int main(int argc, char *argv[]) {
     cudaGetDeviceProperties(&prop, 0);
     printf("Using CUDA device: %s\n", prop.name);
     printf("Kernel type: %s\n", kernel_type);
+    printf("Block size: %d threads\n", block_size);
     
     Dataset ds;
     if (!load_dataset(argv[1], &ds)) return 1;
@@ -194,7 +252,7 @@ int main(int argc, char *argv[]) {
     cudaEventCreate(&stop);
     
     cudaEventRecord(start);
-    perform_analysis(&ds, kernel_type);
+    perform_analysis(&ds, kernel_type, block_size);
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     
@@ -203,7 +261,7 @@ int main(int argc, char *argv[]) {
     double cpu_time = milliseconds / 1000.0;
     
     printf("\n=== Performance ===\n");
-    printf("CUDA execution time (%s kernel): %.4f seconds\n", kernel_type, cpu_time);
+    printf("CUDA execution time (%s kernel, block_size=%d): %.4f seconds\n", kernel_type, block_size, cpu_time);
     printf("Records processed: %d\n", ds.num_records);
     printf("Features analyzed: %d\n", ds.num_features);
     
