@@ -28,7 +28,7 @@ PART 2: IMPLEMENTATIONS CREATED
 
 1. SEQUENTIAL (sequential.c)
    - Baseline single-threaded implementation
-   - Time: 0.0910 seconds
+   - Time: 0.2450 seconds
    - Compile: gcc -O3 -std=c11 -o sequential.exe sequential.c -lm
 
 2. PTHREADS (pthreads.c)
@@ -127,20 +127,20 @@ PART 5: SPEEDUP CALCULATIONS
 Formula: Speedup = Sequential Time / Parallel Time
 
 Calculations (All verified):
-- Sequential: 0.0910 / 0.0910 = 1.00×
-- Pthreads 2:  0.0910 / 0.0540 = 1.69×
-- Pthreads 4:  0.0910 / 0.0330 = 2.76×
-- Pthreads 8:  0.0910 / 0.0210 = 4.33×
-- OpenMP 2 static: 0.0910 / 0.0650 = 1.40×
-- OpenMP 4 static: 0.0910 / 0.0410 = 2.22×
-- OpenMP 8 static: 0.0910 / 0.0330 = 2.76×
-- OpenMP 8 dynamic: 0.0910 / 0.0260 = 3.50×
-- OpenMP 8 guided: 0.0910 / 0.0240 = 3.79×
-- MPI 2:  0.0910 / 0.0387 = 2.35×
-- MPI 4:  0.0910 / 0.0204 = 4.46×
-- MPI 8:  0.0910 / 0.0126 = 7.22×
-- CUDA simple: 0.0910 / 0.0039 = 23.33×
-- CUDA tiled: 0.0910 / 0.0039 = 23.33×
+- Sequential: 0.2450 / 0.2450 = 1.00×
+- Pthreads 2:  0.2450 / 0.1290 = 1.90×
+- Pthreads 4:  0.2450 / 0.1100 = 2.23×
+- Pthreads 8:  0.2450 / 0.0850 = 2.88×
+- OpenMP 2 static: 0.2450 / 0.1820 = 1.35×
+- OpenMP 4 static: 0.2450 / 0.0960 = 2.55×
+- OpenMP 8 static: 0.2450 / 0.0890 = 2.75×
+- OpenMP 8 dynamic: 0.2450 / 0.1090 = 2.25×
+- OpenMP 8 guided: 0.2450 / 0.0670 = 3.66×
+- MPI 2:  0.2450 / 0.0856 = 2.86×
+- MPI 4:  0.2450 / 0.0470 = 5.21×
+- MPI 8:  0.2450 / 0.0373 = 6.57×
+- CUDA simple: 0.2450 / 0.3224 = 0.76×
+- CUDA tiled: 0.2450 / 0.0223 = 10.99×
 
 ================================================================================
 PART 6: KEY FINDINGS & ANALYSIS
@@ -170,15 +170,15 @@ INTERESTING FINDINGS:
    - Adaptive chunk sizing works better
    - Load balancing optimized
 
-3. CUDA kernels perform identically for this dataset size
-   - Both simple and tiled kernels properly implement required optimizations:
+3. CUDA tiled kernel demonstrates optimization benefits
+   - Tiled kernel (10.99×) significantly outperforms simple kernel (0.76×)
+   - Simple kernel shows memory transfer overhead dominates
+   - Tiled kernel properly implements required optimizations:
      * Shared memory utilization (mean kernel reduction, tiled correlation kernel)
      * 2D Tiling techniques (16×16 tiles with shared memory caching)
      * Memory coalescing (feature-major data layout)
      * Block size optimization (configurable 128/256/512)
-   - Dataset size (58K) relatively small - optimizations would show greater benefits on larger datasets
-   - GPU's massive parallelism provides primary performance benefit (23.33× speedup)
-   - All required CUDA optimizations are implemented and ready for larger datasets
+   - Demonstrates critical importance of CUDA optimizations for GPU performance
 
 4. All implementations show proper parallelization
    - Speedup increases with parallelism
@@ -316,7 +316,7 @@ PART 9: DETAILED CODE EXPLANATION - HOW EACH IMPLEMENTATION WORKS
    Correlation between MinTemp and MaxTemp: 0.7499
    Mean of MinTemp: 13.3354
    === Performance ===
-   Pthreads execution time (4 threads): 0.0330 seconds
+   Pthreads execution time (4 threads): 0.1100 seconds
    ```
    
    WHAT THE OUTPUT MEANS:
@@ -359,7 +359,7 @@ PART 9: DETAILED CODE EXPLANATION - HOW EACH IMPLEMENTATION WORKS
    WHAT THE OUTPUT MEANS:
    - "8 threads, guided schedule": Using 8 cores with adaptive chunking
    - "Time: 0.0670 seconds": 3.66× faster than sequential
-   - Guided (0.0240s) > Dynamic (0.0260s) > Static (0.0330s) for 8 threads
+   - Guided (0.0670s) > Static (0.0890s) > Dynamic (0.1090s) for 8 threads
    - Guided schedule provides best load balancing for this workload
 
 4. MPI IMPLEMENTATION (mpi.c)
@@ -485,8 +485,8 @@ PART 9: DETAILED CODE EXPLANATION - HOW EACH IMPLEMENTATION WORKS
    WHAT THE OUTPUT MEANS:
    - "NVIDIA GeForce MX450": GPU device name
    - "Kernel type: tiled": Using optimized tiled kernel
-   - "Time: 0.0201 seconds": 4.5× faster than sequential
-   - Note: Actual test showed 0.0039s (23.33× speedup) - GPU excels at parallel math
+   - "Time: 0.0223 seconds": 10.99× faster than sequential
+   - Note: Tiled kernel with optimizations shows 10.99× speedup - GPU excels at parallel math
    - GPU has hundreds/thousands of cores vs CPU's 4-8 cores
    - Memory transfer overhead: Time includes CPU↔GPU data copying
 
@@ -676,7 +676,7 @@ TO UNDERSTAND RESULTS:
 - Higher speedup = better parallelization
 
 KEY INSIGHTS:
-- CUDA is fastest (23.33×) due to massive GPU parallelism
+- CUDA tiled kernel is fastest (10.99×) due to massive GPU parallelism and optimizations
 - MPI scales best on CPU (7.22× with 8 processes)
 - OpenMP guided schedule is best for shared memory (3.79×)
 - All implementations correctly compute the same results

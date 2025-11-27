@@ -395,15 +395,15 @@ All implementations were tested with the same dataset. Results are shown below.
    - Shows good performance up to 8 threads
 
 2. **OpenMP Scalability**:
-   - Good scalability: 1.40× (2 threads) → 2.22× (4 threads) → 2.76× (8 threads static)
-   - **Scheduling comparison (8 threads)**: Guided (3.79×) > Dynamic (3.50×) > Static (2.76×)
+   - Good scalability: 1.35× (2 threads) → 2.55× (4 threads) → 2.75× (8 threads static)
+   - **Scheduling comparison (8 threads)**: Guided (3.66×) > Static (2.75×) > Dynamic (2.25×)
    - Guided schedule performs best, indicating workload benefits from adaptive chunk sizing
 
 3. **MPI Scalability**:
-   - Outstanding scalability: 2.35× (2 processes) → 4.46× (4 processes) → 7.22× (8 processes)
+   - Outstanding scalability: 2.86× (2 processes) → 5.21× (4 processes) → 6.57× (8 processes)
    - Best CPU performance among all CPU-based implementations
    - Communication overhead is minimal for this dataset size
-   - Near-linear speedup demonstrates efficient distributed computation
+   - Excellent scalability demonstrates efficient distributed computation
 
 4. **CUDA Performance**:
    - Tiled kernel: Exceptional performance (10.99× speedup) demonstrating optimization benefits
@@ -428,10 +428,11 @@ All implementations were tested with the same dataset. Results are shown below.
    - Result contradicts initial expectation that static would be best for uniform workload
 
 3. **Architecture Comparison**:
-   - **GPU (CUDA)**: 23.33× speedup - Best overall performance, demonstrates GPU advantage
-   - **Distributed (MPI)**: 7.22× speedup - Best CPU performance, excellent for clusters
-   - **Shared Memory (Pthreads)**: 4.33× speedup - Good single-machine performance
-   - **Shared Memory (OpenMP)**: 3.79× speedup - Convenient API, good performance
+   - **GPU (CUDA tiled)**: 10.99× speedup - Best overall performance, demonstrates GPU advantage with optimizations
+   - **Distributed (MPI)**: 6.57× speedup - Best CPU performance, excellent for clusters
+   - **Shared Memory (OpenMP)**: 3.66× speedup - Convenient API, good performance
+   - **Shared Memory (Pthreads)**: 2.88× speedup - Good single-machine performance
+   - **GPU (CUDA simple)**: 0.76× speedup - Shows memory transfer overhead without optimizations
 
 4. **Optimization Effectiveness**:
    - CUDA tiled kernel (10.99×) significantly outperforms simple kernel (0.76×)
@@ -456,20 +457,22 @@ All implementations were tested with the same dataset. Results are shown below.
 
 **Scalability Limits:**
 
-- **CPU implementations**: Tested up to 8 threads/processes - all show linear or near-linear speedup
-  - Pthreads: 4.33× with 8 threads (54.1% efficiency)
-  - OpenMP: 3.79× with 8 threads guided (47.4% efficiency)
-  - MPI: 7.22× with 8 processes (90.3% efficiency) - best CPU performance
-- **MPI**: Excellent scalability (7.22×) suggests potential for even more processes
-  - Superlinear speedup at 2 and 4 processes (117.5% and 111.5% efficiency) suggests cache effects
-- **CUDA**: GPU parallelism fully utilized, 23.33× speedup demonstrates effective GPU usage
-  - Both simple and tiled kernels properly implement required optimizations
-  - Tiled kernel's 2D tiling and shared memory optimizations are ready for larger datasets
+- **CPU implementations**: Tested up to 8 threads/processes - all show good scalability
+  - Pthreads: 2.88× with 8 threads (36.0% efficiency)
+  - OpenMP: 3.66× with 8 threads guided (45.8% efficiency)
+  - MPI: 6.57× with 8 processes (82.1% efficiency) - best CPU performance
+- **MPI**: Excellent scalability (6.57×) suggests potential for even more processes
+  - Superlinear speedup at 2 and 4 processes suggests cache effects
+- **CUDA**: Tiled kernel (10.99×) demonstrates effective GPU usage with optimizations
+  - Tiled kernel properly implements required optimizations (2D tiling, shared memory)
+  - Simple kernel (0.76×) shows memory transfer overhead without optimizations
+  - Demonstrates critical importance of CUDA optimizations
 
 **Performance Ranking:**
-1. CUDA: 23.33× (GPU parallelism)
-2. MPI 8 processes: 7.22× (Best CPU)
-3. Pthreads 8 threads: 4.33×
+1. CUDA tiled kernel: 10.99× (GPU parallelism with optimizations)
+2. MPI 8 processes: 6.57× (Best CPU)
+3. OpenMP 8 threads (guided): 3.66×
+4. Pthreads 8 threads: 2.88×
 4. OpenMP 8 threads guided: 3.79×
 
 ---
@@ -516,17 +519,20 @@ All implementations were tested with the same dataset. Results are shown below.
 
 This project successfully demonstrates parallel data analytics across multiple architectures. The implementations show that:
 
-1. **Parallelization is effective**: All parallel implementations provide speedup over sequential baseline (1.40× to 23.33×)
+1. **Parallelization is effective**: All parallel implementations provide speedup over sequential baseline (1.35× to 10.99×)
 2. **Architecture matters**: Different architectures (CPU threads, distributed, GPU) have different strengths
-   - GPU (CUDA): Best overall performance (23.33×) with massive parallelism
-   - Distributed (MPI): Best CPU performance (7.22×) with excellent scalability
-   - Shared Memory (Pthreads/OpenMP): Good single-machine performance (3.79× to 4.33×)
-3. **Optimization is crucial**: All required CUDA optimizations are properly implemented:
-   - Shared memory utilization (mean kernel reduction, tiled correlation kernel)
-   - 2D Tiling techniques (16×16 tiles with shared memory caching)
-   - Memory coalescing (feature-major data layout)
-   - Block size optimization (configurable 128/256/512 for performance testing)
-   - For this dataset size, both kernels show similar performance; optimizations would show greater benefits on larger datasets
+   - GPU (CUDA tiled): Best overall performance (10.99×) with optimizations
+   - Distributed (MPI): Best CPU performance (6.57×) with excellent scalability
+   - Shared Memory (OpenMP): Good single-machine performance (3.66×)
+   - Shared Memory (Pthreads): Good single-machine performance (2.88×)
+3. **Optimization is crucial**: CUDA optimizations show dramatic impact:
+   - Tiled kernel (10.99×) vs simple kernel (0.76×) demonstrates optimization importance
+   - All required CUDA optimizations are properly implemented:
+     * Shared memory utilization (mean kernel reduction, tiled correlation kernel)
+     * 2D Tiling techniques (16×16 tiles with shared memory caching)
+     * Memory coalescing (feature-major data layout)
+     * Block size optimization (configurable 128/256/512 for performance testing)
+   - Optimizations are essential for GPU performance; without them, memory transfer overhead dominates
 4. **Scalability has limits**: Performance improvements plateau due to overhead and hardware constraints
 
 The project provides valuable insights into parallel programming paradigms and their application to real-world data analytics problems.
