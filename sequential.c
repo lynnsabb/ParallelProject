@@ -1,5 +1,5 @@
 // Sequential Implementation: Statistical Feature Extraction
-// Computes correlation matrix, statistical moments (mean, variance, skewness), and normalization
+// Computes correlation matrix and statistical moments (mean, variance, skewness)
 
 #include <stdio.h>
 #include <stdlib.h>

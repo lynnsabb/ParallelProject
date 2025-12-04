@@ -15,19 +15,19 @@ This project implements statistical feature extraction and correlation matrix co
 The project performs:
 - **Correlation Matrix Computation**: Computes Pearson correlation coefficients between all pairs of numerical weather features
 - **Statistical Moments**: Calculates mean, variance, and skewness for each feature
-- **Feature Normalization**: Matrix-vector operations for data standardization
 
 **Why this algorithm is suitable for parallelization:**
-- Correlation computation is O(n²) and can be parallelized across feature pairs
+- Correlation computation is O(n × m²) and can be parallelized across feature pairs
 - Statistical moment calculations are independent across features
-- Matrix operations are highly parallelizable
-- Large dataset (145,000+ records) provides sufficient workload
+- High computational complexity provides sufficient workload for parallelization
+- Dataset with 58,236 records (after preprocessing) provides measurable performance differences
 
 ## Dataset
 
 **Australian Weather Dataset** (`weatherAUS.csv`)
 - Source: Kaggle (https://www.kaggle.com/datasets/jsphyg/weather-dataset-rattle-package)
-- Records: ~145,000 weather observations
+- Original records: ~145,000 weather observations
+- Records after preprocessing: 58,236 (records with missing values are excluded)
 - Features: 16 numerical features (temperature, humidity, pressure, wind speed, etc.)
 
 ## Compilation
@@ -35,9 +35,9 @@ The project performs:
 ### Prerequisites
 - GCC compiler with C11 support
 - OpenMP support (usually included with GCC)
-- MPI implementation (OpenMPI or MPICH)
-- CUDA Toolkit (for GPU implementation)
-- Make utility
+- MPI implementation (MS-MPI for Windows, OpenMPI or MPICH for Linux/Mac)
+- CUDA Toolkit (version 10.0+ for GPU implementation)
+- Make utility (optional, for Linux/Mac)
 
 ### Build Instructions
 
@@ -65,8 +65,8 @@ gcc -Wall -O3 -std=c11 -o pthreads.exe pthreads.c -lm -lpthread
 # OpenMP
 gcc -Wall -O3 -std=c11 -fopenmp -o openmp.exe openmp.c -lm
 
-# MPI
-mpicc -Wall -O3 -std=c11 -o mpi.exe mpi.c -lm
+# MPI (Windows - use x64 Native Tools Command Prompt)
+cl /O2 /EHsc /I"C:\Program Files (x86)\Microsoft SDKs\MPI\Include" mpi.c /link /LIBPATH:"C:\Program Files (x86)\Microsoft SDKs\MPI\Lib\x64" msmpi.lib /out:mpi.exe
 
 # CUDA
 nvcc -O3 -arch=sm_75 -o cuda.exe cuda.cu
@@ -100,9 +100,10 @@ mpirun -np <num_processes> ./mpi weatherAUS.csv
 
 ### CUDA
 ```bash
-./cuda weatherAUS.csv <kernel_type>
-# Example: ./cuda weatherAUS.csv tiled
+./cuda weatherAUS.csv <kernel_type> [block_size]
+# Example: ./cuda weatherAUS.csv tiled 256
 # Kernel types: simple, tiled
+# Block sizes: 128, 256, 512 (default: 256)
 ```
 
 ## Performance Evaluation
@@ -117,7 +118,7 @@ bash run_experiments.sh
 run_experiments.bat
 ```
 
-Results will be saved to `results/performance_results.txt`
+Results will be saved to `results/performance_data.txt` and `results/sample_results.txt`
 
 ## Expected Configurations for Testing
 
@@ -137,11 +138,13 @@ Results will be saved to `results/performance_results.txt`
 ├── cuda.cu               # CUDA implementation
 ├── weatherAUS.csv        # Dataset
 ├── Makefile              # Build configuration
-├── run_experiments.sh    # Performance evaluation script
+├── run_experiments.sh    # Performance evaluation script (Linux/Mac)
+├── run_experiments.bat   # Performance evaluation script (Windows)
 ├── README.md             # This file
 ├── REPORT.md             # Project report
-├── PRESENTATION.md       # Presentation script
 └── results/              # Performance results directory
+    ├── performance_data.txt  # Detailed performance data
+    └── sample_results.txt    # Sample execution results
 ```
 
 ## CUDA Optimizations
@@ -162,7 +165,11 @@ The performance evaluation generates:
 
 ## Team Member Roles
 
-(To be filled by team members)
+- **Noor Chouman**: Implemented the Sequential and OpenMP versions, organized the report, and analyzed performance results.
+- **Jana Ellweis**: Implemented the Pthreads and MPI versions, ran scalability experiments, and contributed to result interpretation.
+- **Lynn Sabbagh**: Implemented and optimized CUDA kernels, handled dataset preprocessing, and contributed to the discussion section.
+
+All members participated in testing, debugging, and preparing the final presentation.
 
 ## Notes
 
