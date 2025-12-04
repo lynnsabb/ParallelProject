@@ -173,12 +173,8 @@ All members participated in testing, debugging, and preparing the final presenta
 
 ## Notes
 
-- All code is original and not copied from online sources
 - The dataset must be placed in the project root directory
 - Ensure sufficient memory for loading the full dataset
 - CUDA implementation requires a compatible NVIDIA GPU
 
-## License
-
-Academic project - for educational purposes only.
 
